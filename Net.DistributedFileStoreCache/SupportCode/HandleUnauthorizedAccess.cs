@@ -1,6 +1,11 @@
 ﻿// Copyright (c) 2022 Jon P Smith, GitHub: JonPSmith, web: http://www.thereformedprogrammer.net/
 // Licensed under MIT license. See License.txt in the project root for license information.
 
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Net.DistributedFileStoreCache.SupportCode
 {
     /// <summary>
@@ -66,8 +71,8 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="fileStoreCacheOptions">This contains parameters that set the delay and the number of times</param>
         /// <param name="applyActionAsync"></param>
         /// <exception cref="DistributedFileStoreCacheException"></exception>
-        public static async Task TryAgainOnUnauthorizedAccessAsync(this DistributedFileStoreCacheOptions fileStoreCacheOptions, 
-            Func<ValueTask> applyActionAsync)
+        public static async Task TryAgainOnUnauthorizedAccessAsync(this DistributedFileStoreCacheOptions fileStoreCacheOptions,
+            Func<Task> applyActionAsync)
         {
             var numTries = 0;
             var success = false;
@@ -86,7 +91,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
                             $"{fileStoreCacheOptions.DelayMillisecondsOnUnauthorizedAccess * fileStoreCacheOptions.NumTriesOnUnauthorizedAccess:N0} milliseconds," +
                             "which is longer that the settings allow.",
                             e);
-                    await Task.Delay( fileStoreCacheOptions.DelayMillisecondsOnUnauthorizedAccess);
+                    await Task.Delay(fileStoreCacheOptions.DelayMillisecondsOnUnauthorizedAccess);
                 }
                 catch (AggregateException e)
                 {

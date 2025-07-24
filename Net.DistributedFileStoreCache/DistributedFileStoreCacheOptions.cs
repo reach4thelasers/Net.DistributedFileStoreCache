@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2022 Jon P Smith, GitHub: JonPSmith, web: http://www.thereformedprogrammer.net/
 // Licensed under MIT license. See License.txt in the project root for license information.
 
+using System;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Hosting;
@@ -67,7 +68,7 @@ namespace Net.DistributedFileStoreCache
         /// <param name="percentWithTimeout">Optional: the percent (between 0 and 100) of the entries will have a timeout</param>
         public void SetMaxBytesByCalculation(int maxEntries, int maxKeyLength, int maxValueLength, int charSize = 1, int percentWithTimeout = 0)
         {
-            maxValueLength *= charSize ;
+            maxValueLength *= charSize;
             MaxBytesInJsonCacheFile = maxEntries * (maxKeyLength + maxValueLength + 6) + 15 + 14;
             if (percentWithTimeout > 0)
                 MaxBytesInJsonCacheFile += (int)(maxEntries * percentWithTimeout / 100.0 *
@@ -85,14 +86,14 @@ namespace Net.DistributedFileStoreCache
         /// NOTE: It you don's set this parameter will added, with the UnsafeRelaxedJsonEscaping if the <see cref="FileStoreCacheVersions.Class"/>
         /// version is selected.
         /// </summary>
-        public JsonSerializerOptions? JsonSerializerForCacheFile { get; set; }
+        public JsonSerializerOptions JsonSerializerForCacheFile { get; set; }
 
         /// <summary>
         /// This provides the path to the directory containing the cache file name
         /// If null, this will be set to the <see cref="IHostEnvironment"/>.<see cref="IHostEnvironment.ContentRootPath"/>.
         /// But you can set your own filepath by setting this parameter
         /// </summary>
-        public string? PathToCacheFileDirectory { get; set; }
+        public string PathToCacheFileDirectory { get; set; }
 
         /// <summary>
         /// This provides a suffix to the cache file name <see cref="FirstPartOfCacheFileName"/>
@@ -100,7 +101,7 @@ namespace Net.DistributedFileStoreCache
         /// If null, this will be set to the <see cref="IHostEnvironment"/>.<see cref="IHostEnvironment.EnvironmentName"/>.
         /// But you can replace the name from the environment settings
         /// </summary>
-        public string? SecondPartOfCacheFileName { get; set; }
+        public string SecondPartOfCacheFileName { get; set; }
 
         /// <summary>
         /// This holds the first part of the distributed cache file used by the <see cref="DistributedFileStoreCacheBytes"/>.

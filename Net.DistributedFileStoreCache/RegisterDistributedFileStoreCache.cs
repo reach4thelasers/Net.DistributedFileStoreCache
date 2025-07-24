@@ -1,6 +1,7 @@
 ﻿// Copyright (c) 2022 Jon P Smith, GitHub: JonPSmith, web: http://www.thereformedprogrammer.net/
 // Licensed under MIT license. See License.txt in the project root for license information.
 
+using System;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
@@ -30,20 +31,23 @@ namespace Net.DistributedFileStoreCache
         /// <exception cref="DistributedFileStoreCacheException"></exception>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static DistributedFileStoreCacheOptions AddDistributedFileStoreCache(this IServiceCollection services,
-            Action<DistributedFileStoreCacheOptions>? optionsAction = null,
-            IHostEnvironment? environment = null)
+            Action<DistributedFileStoreCacheOptions> optionsAction = null,
+            IHostEnvironment environment = null)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
             var options = new DistributedFileStoreCacheOptions();
             optionsAction?.Invoke(options);
-            options.PathToCacheFileDirectory ??= environment?.ContentRootPath;
-            options.SecondPartOfCacheFileName ??= environment?.EnvironmentName;
+            if (options.PathToCacheFileDirectory == null)
+                options.PathToCacheFileDirectory = environment?.ContentRootPath;
+            if (options.SecondPartOfCacheFileName == null)
+                options.SecondPartOfCacheFileName = environment?.EnvironmentName;
 
-            options.JsonSerializerForCacheFile ??= options.WhichVersion == FileStoreCacheVersions.Class
-                // if the JsonSerializerForCacheFile isn't already set up and the version is Class, then add UnsafeRelaxedJsonEscaping
-                ? new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }
-                : new JsonSerializerOptions();
+            if (options.JsonSerializerForCacheFile == null)
+                options.JsonSerializerForCacheFile = options.WhichVersion == FileStoreCacheVersions.Class
+                    // if the JsonSerializerForCacheFile isn't already set up and the version is Class, then add UnsafeRelaxedJsonEscaping
+                    ? new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }
+                    : new JsonSerializerOptions();
 
             if (options.PathToCacheFileDirectory == null)
                 throw new DistributedFileStoreCacheException(

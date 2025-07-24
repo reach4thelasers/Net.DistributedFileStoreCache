@@ -1,8 +1,12 @@
 ﻿// Copyright (c) 2022 Jon P Smith, GitHub: JonPSmith, web: http://www.thereformedprogrammer.net/
 // Licensed under MIT license. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace Net.DistributedFileStoreCache.SupportCode
@@ -19,7 +23,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// ctor
         /// </summary>
         /// <param name="options"></param>
-        public CacheFileHandler (DistributedFileStoreCacheOptions options)
+        public CacheFileHandler(DistributedFileStoreCacheOptions options)
         {
             _options = options;
         }
@@ -29,7 +33,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public string? GetValue(string key)
+        public string GetValue(string key)
         {
             if (StaticCachePart.LocalCacheIsOutOfDate)
                 _options.TryAgainOnUnauthorizedAccess(UpdateLocalCacheFromCacheFile);
@@ -43,7 +47,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="key"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public async Task<string?> GetValueAsync(string key, CancellationToken token)
+        public async Task<string> GetValueAsync(string key, CancellationToken token)
         {
             if (StaticCachePart.LocalCacheIsOutOfDate)
                 await _options.TryAgainOnUnauthorizedAccessAsync(() => UpdateLocalCacheFromCacheFileAsync(token));
@@ -82,12 +86,12 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="key"></param>
         /// <param name="value"></param>
         /// <param name="entryOptions"></param>
-        public void SetKeyValue(string key, string value, DistributedCacheEntryOptions? entryOptions)
+        public void SetKeyValue(string key, string value, DistributedCacheEntryOptions entryOptions)
         {
             var setter = new CacheFileSetOne(key, value, entryOptions);
             _options.TryAgainOnUnauthorizedAccess(() =>
                 ReadAndChangeCacheJsonFile(setter.SetKeyValueHandler, false)
-                    .CheckSyncValueTaskWorked());
+                    .Wait());
         }
 
         /// <summary>
@@ -98,7 +102,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="entryOptions"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public async Task SetKeyValueAsync(string key, string value, DistributedCacheEntryOptions? entryOptions,
+        public async Task SetKeyValueAsync(string key, string value, DistributedCacheEntryOptions entryOptions,
             CancellationToken token)
         {
             var setter = new CacheFileSetOne(key, value, entryOptions);
@@ -111,12 +115,12 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// </summary>
         /// <param name="manyEntries"></param>
         /// <param name="entryOptions"></param>
-        public void SetKeyValueMany(List<KeyValuePair<string, string>> manyEntries, DistributedCacheEntryOptions? entryOptions)
+        public void SetKeyValueMany(List<KeyValuePair<string, string>> manyEntries, DistributedCacheEntryOptions entryOptions)
         {
             var setMany = new CacheFileSetMany(manyEntries, entryOptions);
             _options.TryAgainOnUnauthorizedAccess(() =>
                 ReadAndChangeCacheJsonFile(setMany.SetManyKeyValueHandler, false)
-                    .CheckSyncValueTaskWorked());
+                    .Wait());
         }
 
         /// <summary>
@@ -126,7 +130,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="entryOptions"></param>
         /// <param name="token"></param>
         /// <returns></returns>
-        public async Task SetKeyValueManyAsync(List<KeyValuePair<string, string>> manyEntries, DistributedCacheEntryOptions? entryOptions,
+        public async Task SetKeyValueManyAsync(List<KeyValuePair<string, string>> manyEntries, DistributedCacheEntryOptions entryOptions,
             CancellationToken token)
         {
             var setMany = new CacheFileSetMany(manyEntries, entryOptions);
@@ -143,7 +147,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
             var remover = new CacheFileRemove(key);
             _options.TryAgainOnUnauthorizedAccess(() =>
                 ReadAndChangeCacheJsonFile(remover.RemoveKeyValueHandler, false)
-                    .CheckSyncValueTaskWorked());
+                    .Wait());
         }
 
 
@@ -165,11 +169,11 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// </summary>
         /// <param name="manyEntries">if not null, then after of the clearing the cache these KeyValues will written into the cache</param>
         /// <param name="entryOptions">Optional: If there are entries to add to the cache, this will set the timeout time.</param>
-        public void ResetCacheFile(List<KeyValuePair<string, string>>? manyEntries, DistributedCacheEntryOptions? entryOptions)
+        public void ResetCacheFile(List<KeyValuePair<string, string>> manyEntries, DistributedCacheEntryOptions entryOptions)
         {
             var setMany = new CacheFileSetMany(manyEntries, entryOptions);
             _options.TryAgainOnUnauthorizedAccess(() =>
-                ReadAndChangeCacheJsonFile(setMany.SetManyKeyValueHandler , false, true).CheckSyncValueTaskWorked());
+                ReadAndChangeCacheJsonFile(setMany.SetManyKeyValueHandler, false, true).Wait());
         }
 
 
@@ -188,8 +192,8 @@ namespace Net.DistributedFileStoreCache.SupportCode
                 if (!File.Exists(cacheFilePath))
                 {
                     //This uses FileMode.CreateNew to ensure only one file is created
-                    using FileStream writeStream = new FileStream(cacheFilePath, FileMode.CreateNew, FileAccess.Write,
-                        FileShare.None, bufferSize: 1, false);
+                    using (FileStream writeStream = new FileStream(cacheFilePath, FileMode.CreateNew, FileAccess.Write,
+                        FileShare.None, 1, false))
                     {
                         writeStream.Write(writeBytes, 0, writeBytes.Length);
                     }
@@ -206,10 +210,10 @@ namespace Net.DistributedFileStoreCache.SupportCode
             var readFilePath = _options.FormCacheFilePath();
 
             //This uses FileShare.None to ensure multiple instances don't try to update the in-memory cache at the same time
-            using FileStream readStream = new FileStream(readFilePath, FileMode.Open, FileAccess.Read, FileShare.None,
-                bufferSize: 1, false);
+            using (FileStream readStream = new FileStream(readFilePath, FileMode.Open, FileAccess.Read, FileShare.None,
+                1, false))
             {
-                var numBytesRead = readStream.Read(readBuffer);
+                var numBytesRead = readStream.Read(readBuffer, 0, readBuffer.Length);
                 if (numBytesRead >= _options.MaxBytesInJsonCacheFile)
                     throw new DistributedFileStoreCacheException(
                         $"Your cache json file has more that {_options.MaxBytesInJsonCacheFile} " +
@@ -219,15 +223,15 @@ namespace Net.DistributedFileStoreCache.SupportCode
             }
         }
 
-        private async ValueTask UpdateLocalCacheFromCacheFileAsync(CancellationToken token)
+        private async Task UpdateLocalCacheFromCacheFileAsync(CancellationToken token)
         {
             var readBuffer = new byte[_options.MaxBytesInJsonCacheFile];
             var readFilePath = _options.FormCacheFilePath();
             //This uses FileShare.None to ensure multiple instances don't try to update the in-memory cache at the same time
-            using FileStream readStream = new FileStream(readFilePath, FileMode.Open, FileAccess.Read, FileShare.None,
-                bufferSize: 1, true);
+            using (FileStream readStream = new FileStream(readFilePath, FileMode.Open, FileAccess.Read, FileShare.None,
+                1, true))
             {
-                var numBytesRead = await readStream.ReadAsync(readBuffer, token);
+                var numBytesRead = await readStream.ReadAsync(readBuffer, 0, readBuffer.Length, token);
                 if (numBytesRead >= _options.MaxBytesInJsonCacheFile)
                     throw new DistributedFileStoreCacheException(
                         $"Your cache json file has more that {_options.MaxBytesInJsonCacheFile} " +
@@ -243,21 +247,21 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="updateCurrentJson"></param>
         public delegate void UpdateJsonDelegate(ref CacheJsonContent updateCurrentJson);
 
-        private async ValueTask ReadAndChangeCacheJsonFile(UpdateJsonDelegate? updateCurrentJson, bool useAsync, 
-            bool reset = false, CancellationToken token = new ())
+        private async Task ReadAndChangeCacheJsonFile(UpdateJsonDelegate updateCurrentJson, bool useAsync,
+            bool reset = false, CancellationToken token = default(CancellationToken))
         {
             //thanks to https://stackoverflow.com/questions/15628902/lock-file-exclusively-then-delete-move-it for this approach
 
             int numBytesRead = 0;
             var readWriteBuffer = new byte[_options.MaxBytesInJsonCacheFile];
             var filePath = _options.FormCacheFilePath();
-            using FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, bufferSize: 1, useAsync);
+            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 1, useAsync))
             {
-                if(!reset)
+                if (!reset)
                 {
-                    numBytesRead = useAsync 
-                        ? await fileStream.ReadAsync(readWriteBuffer, token)
-                        : fileStream.Read(readWriteBuffer);
+                    numBytesRead = useAsync
+                        ? await fileStream.ReadAsync(readWriteBuffer, 0, readWriteBuffer.Length, token)
+                        : fileStream.Read(readWriteBuffer, 0, readWriteBuffer.Length);
                     if (numBytesRead >= _options.MaxBytesInJsonCacheFile)
                         throw new DistributedFileStoreCacheException(
                             $"Your cache json file has more that {_options.MaxBytesInJsonCacheFile} " +
@@ -276,9 +280,9 @@ namespace Net.DistributedFileStoreCache.SupportCode
                     fileStream.Seek(0, SeekOrigin.Begin);
                     fileStream.SetLength(0);
                     if (useAsync)
-                        await fileStream.WriteAsync(bytesToWrite, token);
+                        await fileStream.WriteAsync(bytesToWrite, 0, bytesToWrite.Length, token);
                     else
-                        fileStream.Write(bytesToWrite);
+                        fileStream.Write(bytesToWrite, 0, bytesToWrite.Length);
 
                     //This is here to try and negate the first trigger of the file change
                     StaticCachePart.UpdateLocalCache(json);
@@ -292,7 +296,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
                 return new CacheJsonContent();
             var jsonString = Encoding.UTF8.GetString(buffer, 0, numBytes);
 
-            var cacheContent = JsonSerializer.Deserialize<CacheJsonContent>(jsonString)!;
+            var cacheContent = JsonSerializer.Deserialize<CacheJsonContent>(jsonString);
             cacheContent.RemoveExpiredCacheValues();
             return cacheContent;
         }
@@ -303,7 +307,5 @@ namespace Net.DistributedFileStoreCache.SupportCode
 
             return Encoding.UTF8.GetBytes(jsonString);
         }
-
-
     }
 }

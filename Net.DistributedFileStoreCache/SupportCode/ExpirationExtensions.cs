@@ -1,7 +1,10 @@
 ﻿// Copyright (c) 2022 Jon P Smith, GitHub: JonPSmith, web: http://www.thereformedprogrammer.net/
 // Licensed under MIT license. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace Net.DistributedFileStoreCache.SupportCode
@@ -15,7 +18,7 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="key"></param>
         /// <param name="entryOptions"></param>
         /// <exception cref="NotImplementedException"></exception>
-        public static void SetupTimeoutIfOptions(ref CacheJsonContent cache, string key, DistributedCacheEntryOptions? entryOptions)
+        public static void SetupTimeoutIfOptions(ref CacheJsonContent cache, string key, DistributedCacheEntryOptions entryOptions)
         {
             if (entryOptions == null)
                 return;
@@ -30,8 +33,8 @@ namespace Net.DistributedFileStoreCache.SupportCode
             }
             else if (entryOptions.AbsoluteExpirationRelativeToNow != null)
             {
-                cache.TimeOuts[key]  = DateTime.UtcNow.Add(
-                    (TimeSpan)entryOptions.AbsoluteExpirationRelativeToNow!).Ticks;
+                cache.TimeOuts[key] = DateTime.UtcNow.Add(
+                    entryOptions.AbsoluteExpirationRelativeToNow.Value).Ticks;
             }
         }
 
@@ -47,9 +50,9 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// <param name="cache"></param>
         /// <param name="key"></param>
         /// <returns></returns>
-        public static string? ReturnNullIfExpires(this CacheJsonContent cache, string key)
+        public static string ReturnNullIfExpires(this CacheJsonContent cache, string key)
         {
-            if (!StaticCachePart.CacheContent.Cache.TryGetValue(key, out string? value))
+            if (!StaticCachePart.CacheContent.Cache.TryGetValue(key, out string value))
                 return null;
 
             if (cache.TimeOuts.TryGetValue(key, out long timeoutTicks))

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) 2022 Jon P Smith, GitHub: JonPSmith, web: http://www.thereformedprogrammer.net/
 // Licensed under MIT license. See License.txt in the project root for license information.
 
+using System;
+using System.IO;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Test")]
@@ -13,8 +15,8 @@ namespace Net.DistributedFileStoreCache.SupportCode
     internal static class StaticCachePart
     {
         //private values
-        private static FileSystemWatcher? _watcher;
-        private static string? _cacheFilePathCheck;
+        private static FileSystemWatcher _watcher;
+        private static string _cacheFilePathCheck;
 
         /// <summary>
         /// If this is true, then the cache file must be read in into the 
@@ -27,7 +29,6 @@ namespace Net.DistributedFileStoreCache.SupportCode
         /// </summary>
         public static CacheJsonContent CacheContent { get; private set; } = new CacheJsonContent();
 
-
         /// <summary>
         /// This should be called on startup after the <see cref="DistributedFileStoreCacheOptions"/> has been set.
         /// Its job is to set up the file watcher.
@@ -38,7 +39,8 @@ namespace Net.DistributedFileStoreCache.SupportCode
             if (fileStoreCacheOptions.PathToCacheFileDirectory == null)
                 throw new ArgumentNullException(nameof(fileStoreCacheOptions.PathToCacheFileDirectory));
 
-            _cacheFilePathCheck ??= fileStoreCacheOptions.FormCacheFilePath();
+            if (_cacheFilePathCheck == null)
+                _cacheFilePathCheck = fileStoreCacheOptions.FormCacheFilePath();
             if (_cacheFilePathCheck != fileStoreCacheOptions.FormCacheFilePath() && !fileStoreCacheOptions.TurnOffStaticFilePathCheck)
                 //You can only have one static 
                 throw new DistributedFileStoreCacheException(

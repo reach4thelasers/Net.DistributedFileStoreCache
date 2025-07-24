@@ -1,16 +1,19 @@
 ﻿// Copyright (c) 2022 Jon P Smith, GitHub: JonPSmith, web: http://www.thereformedprogrammer.net/
 // Licensed under MIT license. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace Net.DistributedFileStoreCache.SupportCode
 {
     internal class CacheFileSetMany
     {
-        private readonly List<KeyValuePair<string, string>>? _manyEntries;
-        private readonly DistributedCacheEntryOptions? _timeoutOptions;
+        private readonly List<KeyValuePair<string, string>> _manyEntries;
+        private readonly DistributedCacheEntryOptions _timeoutOptions;
 
-        public CacheFileSetMany(List<KeyValuePair<string, string>>? manyEntries, DistributedCacheEntryOptions? timeoutOptions)
+        public CacheFileSetMany(List<KeyValuePair<string, string>> manyEntries, DistributedCacheEntryOptions timeoutOptions)
         {
             _manyEntries = manyEntries;
             _timeoutOptions = timeoutOptions;
