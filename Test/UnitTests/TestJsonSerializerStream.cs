@@ -7,48 +7,49 @@ using TestSupport.Helpers;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Test.UnitTests;
-
-//NOTE: I tried using streaming to improve performance, but it didn't make any change
-//I decided to NOT use streaming because you could add more data than the sync version can handle 
-public class TestJsonSerializerStream
+namespace Test.UnitTests
 {
-    private readonly ITestOutputHelper _output;
-    private readonly string _filePath;
-
-    public TestJsonSerializerStream(ITestOutputHelper output)
+    //NOTE: I tried using streaming to improve performance, but it didn't make any change
+//I decided to NOT use streaming because you could add more data than the sync version can handle 
+    public class TestJsonSerializerStream
     {
-        _output = output;
-        _filePath = Path.Combine(TestData.GetTestDataDir(), $"{GetType().Name}.json");
-    }
+        private readonly ITestOutputHelper _output;
+        private readonly string _filePath;
 
-    private async Task UpdateFileInLock(string key, string value)
-    {
-        using FileStream fileStream = new FileStream(_filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, bufferSize: 1, true);
+        public TestJsonSerializerStream(ITestOutputHelper output)
         {
-            var reader =new StreamReader(fileStream).BaseStream;
-            var json = JsonSerializer.Deserialize<CacheJsonContent>(reader, new JsonSerializerOptions());
-            json.Cache[key] = value;
-            fileStream.Seek(0, SeekOrigin.Begin);
-            fileStream.SetLength(0);
-            var writer = new StreamWriter(fileStream).BaseStream;
-
-            await JsonSerializer.SerializeAsync(writer, json);
+            _output = output;
+            _filePath = Path.Combine(TestData.GetTestDataDir(), $"{GetType().Name}.json");
         }
-    }
 
-    [Fact]
-    public async Task TestUpdateJsonFile()
-    {
-        //SETUP
-        File.WriteAllText(_filePath, "{\r\n  \"Cache\": {}\r\n}");
+        private async Task UpdateFileInLock(string key, string value)
+        {
+            using FileStream fileStream = new FileStream(_filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None, bufferSize: 1, true);
+            {
+                var reader =new StreamReader(fileStream).BaseStream;
+                var json = JsonSerializer.Deserialize<CacheJsonContent>(reader, new JsonSerializerOptions());
+                json.Cache[key] = value;
+                fileStream.Seek(0, SeekOrigin.Begin);
+                fileStream.SetLength(0);
+                var writer = new StreamWriter(fileStream).BaseStream;
 
-        //ATTEMPT
-        await UpdateFileInLock("test", "does it work");
+                await JsonSerializer.SerializeAsync(writer, json);
+            }
+        }
 
-        //VERIFY
-        _output.WriteLine(File.ReadAllText(_filePath));
-    }
+        [Fact]
+        public async Task TestUpdateJsonFile()
+        {
+            //SETUP
+            File.WriteAllText(_filePath, "{\r\n  \"Cache\": {}\r\n}");
+
+            //ATTEMPT
+            await UpdateFileInLock("test", "does it work");
+
+            //VERIFY
+            _output.WriteLine(File.ReadAllText(_filePath));
+        }
 
  
+    }
 }

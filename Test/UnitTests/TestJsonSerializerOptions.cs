@@ -11,161 +11,162 @@ using Xunit;
 using Xunit.Abstractions;
 using Xunit.Extensions.AssertExtensions;
 
-namespace Test.UnitTests;
-
-// see https://stackoverflow.com/questions/1408175/execute-unit-tests-serially-rather-than-in-parallel
-[Collection("Sequential")]
-public class TestJsonSerializerOptions
+namespace Test.UnitTests
 {
-    private readonly ITestOutputHelper _output;
-    private DistributedFileStoreCacheOptions _options;
-
-    public TestJsonSerializerOptions(ITestOutputHelper output)
+    // see https://stackoverflow.com/questions/1408175/execute-unit-tests-serially-rather-than-in-parallel
+    [Collection("Sequential")]
+    public class TestJsonSerializerOptions
     {
-        _output = output;
-    }
+        private readonly ITestOutputHelper _output;
+        private DistributedFileStoreCacheOptions _options;
 
-    private IDistributedFileStoreCacheString SetupCache(JsonSerializerOptions jsonOptions)
-    {
-        var services = new ServiceCollection();
-        _options = services.AddDistributedFileStoreCache(options =>
+        public TestJsonSerializerOptions(ITestOutputHelper output)
         {
-            options.WhichVersion = FileStoreCacheVersions.String;
-            options.PathToCacheFileDirectory = TestData.GetTestDataDir();
-            options.SecondPartOfCacheFileName = GetType().Name;
-            options.TurnOffStaticFilePathCheck = true;
+            _output = output;
+        }
 
-            options.JsonSerializerForCacheFile = jsonOptions;
-        });
-        var serviceProvider = services.BuildServiceProvider();
+        private IDistributedFileStoreCacheString SetupCache(JsonSerializerOptions jsonOptions)
+        {
+            var services = new ServiceCollection();
+            _options = services.AddDistributedFileStoreCache(options =>
+            {
+                options.WhichVersion = FileStoreCacheVersions.String;
+                options.PathToCacheFileDirectory = TestData.GetTestDataDir();
+                options.SecondPartOfCacheFileName = GetType().Name;
+                options.TurnOffStaticFilePathCheck = true;
 
-        return serviceProvider.GetRequiredService<IDistributedFileStoreCacheString>();
-    }
+                options.JsonSerializerForCacheFile = jsonOptions;
+            });
+            var serviceProvider = services.BuildServiceProvider();
 
-    [Fact]
-    public void TestDefaultJsonSerializer()
-    {
-        //SETUP
-        var cache = SetupCache(new JsonSerializerOptions());
-        cache.ClearAll();
+            return serviceProvider.GetRequiredService<IDistributedFileStoreCacheString>();
+        }
 
-        //ATTEMPT
-        cache.Set("Test", "Hello today!", null);
+        [Fact]
+        public void TestDefaultJsonSerializer()
+        {
+            //SETUP
+            var cache = SetupCache(new JsonSerializerOptions());
+            cache.ClearAll();
 
-        //VERIFY
-        var fileContent = File.ReadAllText(_options.FormCacheFilePath());
-        fileContent.ShouldEqual(@"{""Cache"":{""Test"":""Hello today!""},""TimeOuts"":{}}");
-    }
+            //ATTEMPT
+            cache.Set("Test", "Hello today!", null);
 
-    [Fact]
-    public void TestJsonSerializerWriteIndented()
-    {
-        //SETUP
-        var cache = SetupCache(new JsonSerializerOptions { WriteIndented = true});
-        cache.ClearAll();
+            //VERIFY
+            var fileContent = File.ReadAllText(_options.FormCacheFilePath());
+            fileContent.ShouldEqual(@"{""Cache"":{""Test"":""Hello today!""},""TimeOuts"":{}}");
+        }
 
-        //ATTEMPT
-        cache.Set("Test", "Hello today!", null);
+        [Fact]
+        public void TestJsonSerializerWriteIndented()
+        {
+            //SETUP
+            var cache = SetupCache(new JsonSerializerOptions { WriteIndented = true});
+            cache.ClearAll();
 
-        //VERIFY
-        var fileContent = File.ReadAllText(_options.FormCacheFilePath());
-        fileContent.ShouldEqual(@"{
+            //ATTEMPT
+            cache.Set("Test", "Hello today!", null);
+
+            //VERIFY
+            var fileContent = File.ReadAllText(_options.FormCacheFilePath());
+            fileContent.ShouldEqual(@"{
   ""Cache"": {
     ""Test"": ""Hello today!""
   },
   ""TimeOuts"": {}
 }");
-    }
+        }
 
-    [Fact]
-    public void TestDefaultJsonSerializer_JsonInJson()
-    {
-        //SETUP
-        var cache = SetupCache(new JsonSerializerOptions());
-        cache.ClearAll();
-
-        var value = JsonSerializer.Serialize(new Dictionary<int, string>
+        [Fact]
+        public void TestDefaultJsonSerializer_JsonInJson()
         {
-            {1, "One"}, {2,"Two"}
-        });
+            //SETUP
+            var cache = SetupCache(new JsonSerializerOptions());
+            cache.ClearAll();
 
-        //ATTEMPT
-        cache.Set("Json", value, null);
+            var value = JsonSerializer.Serialize(new Dictionary<int, string>
+            {
+                {1, "One"}, {2,"Two"}
+            });
 
-        //VERIFY
-        var fileContent = File.ReadAllText(_options.FormCacheFilePath());
-        fileContent.ShouldEqual(@"{""Cache"":{""Json"":""{\u00221\u0022:\u0022One\u0022,\u00222\u0022:\u0022Two\u0022}""},""TimeOuts"":{}}");
-    }
+            //ATTEMPT
+            cache.Set("Json", value, null);
 
-    [Fact]
-    public void TestJsonSerializerUnsafeRelaxedJsonEscaping_JsonInJson()
-    {
-        //SETUP
-        var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-        cache.ClearAll();
+            //VERIFY
+            var fileContent = File.ReadAllText(_options.FormCacheFilePath());
+            fileContent.ShouldEqual(@"{""Cache"":{""Json"":""{\u00221\u0022:\u0022One\u0022,\u00222\u0022:\u0022Two\u0022}""},""TimeOuts"":{}}");
+        }
 
-        var value = JsonSerializer.Serialize(new Dictionary<int, string>
+        [Fact]
+        public void TestJsonSerializerUnsafeRelaxedJsonEscaping_JsonInJson()
         {
-            {1, "One"}, {2,"Two"}
-        });
+            //SETUP
+            var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            cache.ClearAll();
 
-        //ATTEMPT
-        cache.Set("Json", value, null);
+            var value = JsonSerializer.Serialize(new Dictionary<int, string>
+            {
+                {1, "One"}, {2,"Two"}
+            });
 
-        //VERIFY
-        var fileContent = File.ReadAllText(_options.FormCacheFilePath());
-        fileContent.ShouldEqual(@"{""Cache"":{""Json"":""{\""1\"":\""One\"",\""2\"":\""Two\""}""},""TimeOuts"":{}}");
-    }
+            //ATTEMPT
+            cache.Set("Json", value, null);
 
-    //This test shows that UnsafeRelaxedJsonEscaping doesn't do anything different to normal
-    [Fact]
-    public void TestJsonSerializerUnsafeRelaxedJsonEscaping_ASCII()
-    {
-        //SETUP
-        var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-        cache.ClearAll();
+            //VERIFY
+            var fileContent = File.ReadAllText(_options.FormCacheFilePath());
+            fileContent.ShouldEqual(@"{""Cache"":{""Json"":""{\""1\"":\""One\"",\""2\"":\""Two\""}""},""TimeOuts"":{}}");
+        }
 
-        //ATTEMPT
-        cache.Set("Test", "Hello today!", null);
+        //This test shows that UnsafeRelaxedJsonEscaping doesn't do anything different to normal
+        [Fact]
+        public void TestJsonSerializerUnsafeRelaxedJsonEscaping_ASCII()
+        {
+            //SETUP
+            var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            cache.ClearAll();
 
-        //VERIFY
-        var fileContent = File.ReadAllText(_options.FormCacheFilePath());
-        fileContent.ShouldEqual(@"{""Cache"":{""Test"":""Hello today!""},""TimeOuts"":{}}");
-    }
+            //ATTEMPT
+            cache.Set("Test", "Hello today!", null);
 
-    //This test shows that UnsafeRelaxedJsonEscaping doesn't do anything different to normal
-    [Fact]
-    public void TestJsonSerializerUnsafeRelaxedJsonEscaping_Bytes()
-    {
-        //SETUP
-        var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-        cache.ClearAll();
+            //VERIFY
+            var fileContent = File.ReadAllText(_options.FormCacheFilePath());
+            fileContent.ShouldEqual(@"{""Cache"":{""Test"":""Hello today!""},""TimeOuts"":{}}");
+        }
 
-        var value = new string(new[] { (char)1, (char)2, (char)3 });
+        //This test shows that UnsafeRelaxedJsonEscaping doesn't do anything different to normal
+        [Fact]
+        public void TestJsonSerializerUnsafeRelaxedJsonEscaping_Bytes()
+        {
+            //SETUP
+            var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            cache.ClearAll();
 
-        //ATTEMPT
-        cache.Set("Test", value, null);
+            var value = new string(new[] { (char)1, (char)2, (char)3 });
 
-        //VERIFY
-        var fileContent = File.ReadAllText(_options.FormCacheFilePath());
-        fileContent.ShouldEqual(@"{""Cache"":{""Test"":""\u0001\u0002\u0003""},""TimeOuts"":{}}");
-    }
+            //ATTEMPT
+            cache.Set("Test", value, null);
 
-    //This test shows that UnsafeRelaxedJsonEscaping doesn't do anything different to normal
-    [Fact]
-    public void TestJsonSerializerUnsafeRelaxedJsonEscaping_Unicode()
-    {
-        //SETUP
-        var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-        cache.ClearAll();
+            //VERIFY
+            var fileContent = File.ReadAllText(_options.FormCacheFilePath());
+            fileContent.ShouldEqual(@"{""Cache"":{""Test"":""\u0001\u0002\u0003""},""TimeOuts"":{}}");
+        }
 
-        var value = "בָּרוּךְ אַתָּה ה' אֱ-לֹהֵינוּ, מֶלֶך הָעוֹלָם";
+        //This test shows that UnsafeRelaxedJsonEscaping doesn't do anything different to normal
+        [Fact]
+        public void TestJsonSerializerUnsafeRelaxedJsonEscaping_Unicode()
+        {
+            //SETUP
+            var cache = SetupCache(new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            cache.ClearAll();
 
-        //ATTEMPT
-        cache.Set("Test", value, null);
+            var value = "בָּרוּךְ אַתָּה ה' אֱ-לֹהֵינוּ, מֶלֶך הָעוֹלָם";
 
-        //VERIFY
-        var fileContent = File.ReadAllText(_options.FormCacheFilePath());
-        fileContent.ShouldEqual(@"{""Cache"":{""Test"":""בָּרוּךְ אַתָּה ה' אֱ-לֹהֵינוּ, מֶלֶך הָעוֹלָם""},""TimeOuts"":{}}");
+            //ATTEMPT
+            cache.Set("Test", value, null);
+
+            //VERIFY
+            var fileContent = File.ReadAllText(_options.FormCacheFilePath());
+            fileContent.ShouldEqual(@"{""Cache"":{""Test"":""בָּרוּךְ אַתָּה ה' אֱ-לֹהֵינוּ, מֶלֶך הָעוֹלָם""},""TimeOuts"":{}}");
+        }
     }
 }

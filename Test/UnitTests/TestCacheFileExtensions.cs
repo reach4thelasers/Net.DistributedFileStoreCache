@@ -7,50 +7,51 @@ using Xunit;
 using Xunit.Abstractions;
 using Xunit.Extensions.AssertExtensions;
 
-namespace Test.UnitTests;
-
-public class TestCacheFileExtensions
+namespace Test.UnitTests
 {
-    private readonly ITestOutputHelper _output;
-
-    public TestCacheFileExtensions(ITestOutputHelper output)
+    public class TestCacheFileExtensions
     {
-        _output = output;
-    }
+        private readonly ITestOutputHelper _output;
 
-
-    [Fact]
-    public void TestFormCacheFileName()
-    {
-        //SETUP
-        var options = new DistributedFileStoreCacheOptions
+        public TestCacheFileExtensions(ITestOutputHelper output)
         {
-            FirstPartOfCacheFileName = "Test",
-            SecondPartOfCacheFileName = "Type"
-        };
+            _output = output;
+        }
 
-        //ATTEMPT
-        var fileName = options.FormCacheFileName();
 
-        //VERIFY
-        fileName.ShouldEqual("Test.Type.json");
-    }
-
-    [Fact]
-    public void TestFormCacheFilePath()
-    {
-        //SETUP
-        var options = new DistributedFileStoreCacheOptions
+        [Fact]
+        public void TestFormCacheFileName()
         {
-            FirstPartOfCacheFileName = "Test",
-            SecondPartOfCacheFileName = "Type",
-            PathToCacheFileDirectory = "C:\\directory\\"
-        };
+            //SETUP
+            var options = new DistributedFileStoreCacheOptions
+            {
+                FirstPartOfCacheFileName = "Test",
+                SecondPartOfCacheFileName = "Type"
+            };
 
-        //ATTEMPT
-        var fileName = options.FormCacheFilePath();
+            //ATTEMPT
+            var fileName = options.FormCacheFileName();
 
-        //VERIFY
-        fileName.ShouldEqual("C:\\directory\\Test.Type.json");
+            //VERIFY
+            fileName.ShouldEqual("Test.Type.json");
+        }
+
+        [Fact]
+        public void TestFormCacheFilePath()
+        {
+            //SETUP
+            var options = new DistributedFileStoreCacheOptions
+            {
+                FirstPartOfCacheFileName = "Test",
+                SecondPartOfCacheFileName = "Type",
+                PathToCacheFileDirectory = "C:\\directory\\"
+            };
+
+            //ATTEMPT
+            var fileName = options.FormCacheFilePath();
+
+            //VERIFY
+            fileName.ShouldEqual("C:\\directory\\Test.Type.json");
+        }
     }
 }

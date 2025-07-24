@@ -5,71 +5,72 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Test")]
 
-namespace Net.DistributedFileStoreCache.SupportCode;
-
-/// <summary>
-/// This static class contains the
-/// </summary>
-internal static class StaticCachePart
+namespace Net.DistributedFileStoreCache.SupportCode
 {
-    //private values
-    private static FileSystemWatcher? _watcher;
-    private static string? _cacheFilePathCheck;
-
     /// <summary>
-    /// If this is true, then the cache file must be read in into the 
-    /// <see cref="CacheContent"/> static dictionary
+    /// This static class contains the
     /// </summary>
-    public static bool LocalCacheIsOutOfDate { get; private set; }
-
-    /// <summary>
-    /// This contains the local static cache of the data in the cache file 
-    /// </summary>
-    public static CacheJsonContent CacheContent { get; private set; } = new CacheJsonContent();
-
-
-    /// <summary>
-    /// This should be called on startup after the <see cref="DistributedFileStoreCacheOptions"/> has been set.
-    /// Its job is to set up the file watcher.
-    /// </summary>
-    /// <param name="fileStoreCacheOptions"></param>
-    public static void SetupStaticCache(DistributedFileStoreCacheOptions fileStoreCacheOptions)
+    internal static class StaticCachePart
     {
-        if (fileStoreCacheOptions.PathToCacheFileDirectory == null)
-            throw new ArgumentNullException(nameof(fileStoreCacheOptions.PathToCacheFileDirectory));
+        //private values
+        private static FileSystemWatcher? _watcher;
+        private static string? _cacheFilePathCheck;
 
-        _cacheFilePathCheck ??= fileStoreCacheOptions.FormCacheFilePath();
-        if (_cacheFilePathCheck != fileStoreCacheOptions.FormCacheFilePath() && !fileStoreCacheOptions.TurnOffStaticFilePathCheck)
-            //You can only have one static 
-            throw new DistributedFileStoreCacheException(
-                "You are trying re-registered the static cache part to a different filepath, which is not allowed.");
+        /// <summary>
+        /// If this is true, then the cache file must be read in into the 
+        /// <see cref="CacheContent"/> static dictionary
+        /// </summary>
+        public static bool LocalCacheIsOutOfDate { get; private set; }
 
-        CacheContent = new CacheJsonContent(); //Make sure empty - mainly for unit tests
+        /// <summary>
+        /// This contains the local static cache of the data in the cache file 
+        /// </summary>
+        public static CacheJsonContent CacheContent { get; private set; } = new CacheJsonContent();
 
-        //Make sure there is a cache file
-        var cacheHandler = new CacheFileHandler(fileStoreCacheOptions);
-        cacheHandler.CreateNewCacheFileIfMissingWithRetry();
-        LocalCacheIsOutOfDate = true;
 
-        _watcher = new FileSystemWatcher(fileStoreCacheOptions.PathToCacheFileDirectory,
-            fileStoreCacheOptions.FormCacheFileName());
-        _watcher.EnableRaisingEvents = true;
-        _watcher.NotifyFilter = NotifyFilters.LastWrite;
-
-        _watcher.Changed += (sender, args) =>
+        /// <summary>
+        /// This should be called on startup after the <see cref="DistributedFileStoreCacheOptions"/> has been set.
+        /// Its job is to set up the file watcher.
+        /// </summary>
+        /// <param name="fileStoreCacheOptions"></param>
+        public static void SetupStaticCache(DistributedFileStoreCacheOptions fileStoreCacheOptions)
         {
-            //when the cache file is changed, then the local 
-            LocalCacheIsOutOfDate = true;
-        };
-    }
+            if (fileStoreCacheOptions.PathToCacheFileDirectory == null)
+                throw new ArgumentNullException(nameof(fileStoreCacheOptions.PathToCacheFileDirectory));
 
-    /// <summary>
-    /// This updates the local static cache parameter and sets the <see cref="LocalCacheIsOutOfDate"/> to false
-    /// </summary>
-    /// <param name="updatedCache"></param>
-    public static void UpdateLocalCache(CacheJsonContent updatedCache)
-    {
-        CacheContent = updatedCache;
-        LocalCacheIsOutOfDate = false;
+            _cacheFilePathCheck ??= fileStoreCacheOptions.FormCacheFilePath();
+            if (_cacheFilePathCheck != fileStoreCacheOptions.FormCacheFilePath() && !fileStoreCacheOptions.TurnOffStaticFilePathCheck)
+                //You can only have one static 
+                throw new DistributedFileStoreCacheException(
+                    "You are trying re-registered the static cache part to a different filepath, which is not allowed.");
+
+            CacheContent = new CacheJsonContent(); //Make sure empty - mainly for unit tests
+
+            //Make sure there is a cache file
+            var cacheHandler = new CacheFileHandler(fileStoreCacheOptions);
+            cacheHandler.CreateNewCacheFileIfMissingWithRetry();
+            LocalCacheIsOutOfDate = true;
+
+            _watcher = new FileSystemWatcher(fileStoreCacheOptions.PathToCacheFileDirectory,
+                fileStoreCacheOptions.FormCacheFileName());
+            _watcher.EnableRaisingEvents = true;
+            _watcher.NotifyFilter = NotifyFilters.LastWrite;
+
+            _watcher.Changed += (sender, args) =>
+            {
+                //when the cache file is changed, then the local 
+                LocalCacheIsOutOfDate = true;
+            };
+        }
+
+        /// <summary>
+        /// This updates the local static cache parameter and sets the <see cref="LocalCacheIsOutOfDate"/> to false
+        /// </summary>
+        /// <param name="updatedCache"></param>
+        public static void UpdateLocalCache(CacheJsonContent updatedCache)
+        {
+            CacheContent = updatedCache;
+            LocalCacheIsOutOfDate = false;
+        }
     }
 }

@@ -10,117 +10,118 @@ using Xunit;
 using Xunit.Abstractions;
 using Xunit.Extensions.AssertExtensions;
 
-namespace Test.UnitTests;
-
-// see https://stackoverflow.com/questions/1408175/execute-unit-tests-serially-rather-than-in-parallel
-[Collection("Sequential")]
-public class TestStaticCachePart
+namespace Test.UnitTests
 {
-    private readonly DistributedFileStoreCacheOptions _options;
-    private readonly ITestOutputHelper _output;
-
-    public TestStaticCachePart(ITestOutputHelper output)
+    // see https://stackoverflow.com/questions/1408175/execute-unit-tests-serially-rather-than-in-parallel
+    [Collection("Sequential")]
+    public class TestStaticCachePart
     {
-        _output = output;
+        private readonly DistributedFileStoreCacheOptions _options;
+        private readonly ITestOutputHelper _output;
 
-        _options = new DistributedFileStoreCacheOptions
+        public TestStaticCachePart(ITestOutputHelper output)
         {
-            PathToCacheFileDirectory = TestData.GetTestDataDir(),
-            SecondPartOfCacheFileName = GetType().Name,
-            TurnOffStaticFilePathCheck = true
-        };
-    }
+            _output = output;
 
-    private static void CreateNewCacheFile(string filePath)
-    {
-        byte[] buffer = Encoding.UTF8.GetBytes("{\r\n  \"Cache\": {}\r\n}");
-        using FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 1, true);
-        {
-            fs.Write(buffer);
+            _options = new DistributedFileStoreCacheOptions
+            {
+                PathToCacheFileDirectory = TestData.GetTestDataDir(),
+                SecondPartOfCacheFileName = GetType().Name,
+                TurnOffStaticFilePathCheck = true
+            };
         }
-    }
 
-    [Fact]
-    public void TestFileSystemWatcherChange_WriteAllFiles()
-    {
-        //SETUP
-        var watcher = new FileSystemWatcher(_options.PathToCacheFileDirectory, _options.FormCacheFileName());
-        watcher.EnableRaisingEvents = true;
-        watcher.NotifyFilter = NotifyFilters.LastWrite;
+        private static void CreateNewCacheFile(string filePath)
+        {
+            byte[] buffer = Encoding.UTF8.GetBytes("{\r\n  \"Cache\": {}\r\n}");
+            using FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 1, true);
+            {
+                fs.Write(buffer);
+            }
+        }
 
-        var count = 0;
-        watcher.Changed += (sender, args) => count++;
+        [Fact]
+        public void TestFileSystemWatcherChange_WriteAllFiles()
+        {
+            //SETUP
+            var watcher = new FileSystemWatcher(_options.PathToCacheFileDirectory, _options.FormCacheFileName());
+            watcher.EnableRaisingEvents = true;
+            watcher.NotifyFilter = NotifyFilters.LastWrite;
 
-        //ATTEMPT
-        File.WriteAllText(_options.FormCacheFilePath(), "{\r\n  \"Cache\": {\r\n    \"test\": \"goodbye\"\r\n  }\r\n}");
+            var count = 0;
+            watcher.Changed += (sender, args) => count++;
 
-        //VERIFY
-        count.ShouldBeInRange(1, 2);
-        _output.WriteLine($"Triggered {count} times");
-    }
+            //ATTEMPT
+            File.WriteAllText(_options.FormCacheFilePath(), "{\r\n  \"Cache\": {\r\n    \"test\": \"goodbye\"\r\n  }\r\n}");
 
-    [Fact]
-    public void TestFileSystemWatcherChange_CreateNewCacheFile()
-    {
-        //SETUP
-        var watcher = new FileSystemWatcher(_options.PathToCacheFileDirectory, _options.FormCacheFileName());
-        watcher.EnableRaisingEvents = true;
-        watcher.NotifyFilter = NotifyFilters.LastWrite;
+            //VERIFY
+            count.ShouldBeInRange(1, 2);
+            _output.WriteLine($"Triggered {count} times");
+        }
 
-        var count = 0;
-        watcher.Changed += (sender, args) => count++;
+        [Fact]
+        public void TestFileSystemWatcherChange_CreateNewCacheFile()
+        {
+            //SETUP
+            var watcher = new FileSystemWatcher(_options.PathToCacheFileDirectory, _options.FormCacheFileName());
+            watcher.EnableRaisingEvents = true;
+            watcher.NotifyFilter = NotifyFilters.LastWrite;
 
-        //ATTEMPT
-        CreateNewCacheFile(_options.FormCacheFilePath());
+            var count = 0;
+            watcher.Changed += (sender, args) => count++;
 
-        //VERIFY
-        count.ShouldBeInRange(1, 2);
-        _output.WriteLine($"Triggered {count} times");
-    }
+            //ATTEMPT
+            CreateNewCacheFile(_options.FormCacheFilePath());
 
-    [Fact]
-    public void TestStartupNoCacheFile()
-    {
-        //SETUP
-        if (File.Exists(_options.FormCacheFilePath())) 
-            File.Delete(_options.FormCacheFilePath());
+            //VERIFY
+            count.ShouldBeInRange(1, 2);
+            _output.WriteLine($"Triggered {count} times");
+        }
 
-        //ATTEMPT
-        StaticCachePart.SetupStaticCache(_options);
+        [Fact]
+        public void TestStartupNoCacheFile()
+        {
+            //SETUP
+            if (File.Exists(_options.FormCacheFilePath())) 
+                File.Delete(_options.FormCacheFilePath());
+
+            //ATTEMPT
+            StaticCachePart.SetupStaticCache(_options);
 
 
-        //VERIFY
-        File.Exists(_options.FormCacheFilePath()).ShouldBeTrue();
-        StaticCachePart.CacheContent.Cache.ShouldEqual(new Dictionary<string, string>());
-        StaticCachePart.CacheContent.TimeOuts.ShouldEqual(new Dictionary<string, long>());
-        _options.DisplayCacheFile(_output);
-    }
+            //VERIFY
+            File.Exists(_options.FormCacheFilePath()).ShouldBeTrue();
+            StaticCachePart.CacheContent.Cache.ShouldEqual(new Dictionary<string, string>());
+            StaticCachePart.CacheContent.TimeOuts.ShouldEqual(new Dictionary<string, long>());
+            _options.DisplayCacheFile(_output);
+        }
 
-    [Fact]
-    public void TestStartupCacheFileExists()
-    {
-        //SETUP
-        File.WriteAllText(_options.FormCacheFilePath(), "{\r\n  \"Cache\": {\r\n    \"test\": \"goodbye\"\r\n  }\r\n}");
+        [Fact]
+        public void TestStartupCacheFileExists()
+        {
+            //SETUP
+            File.WriteAllText(_options.FormCacheFilePath(), "{\r\n  \"Cache\": {\r\n    \"test\": \"goodbye\"\r\n  }\r\n}");
 
-        //ATTEMPT
-        StaticCachePart.SetupStaticCache(_options);
+            //ATTEMPT
+            StaticCachePart.SetupStaticCache(_options);
 
-        //VERIFY
-        _options.DisplayCacheFile(_output);
-    }
+            //VERIFY
+            _options.DisplayCacheFile(_output);
+        }
 
-    [Fact]
-    public void TestStartupCacheChangeCacheFile()
-    {
-        //SETUP
-        if (File.Exists(_options.FormCacheFilePath())) File.Delete(_options.FormCacheFilePath());
-        StaticCachePart.SetupStaticCache(_options);
+        [Fact]
+        public void TestStartupCacheChangeCacheFile()
+        {
+            //SETUP
+            if (File.Exists(_options.FormCacheFilePath())) File.Delete(_options.FormCacheFilePath());
+            StaticCachePart.SetupStaticCache(_options);
 
-        //ATTEMPT
-        File.WriteAllText(_options.FormCacheFilePath(), "{\r\n  \"Cache\": {\r\n    \"test\": \"goodbye\"\r\n  }\r\n}");
+            //ATTEMPT
+            File.WriteAllText(_options.FormCacheFilePath(), "{\r\n  \"Cache\": {\r\n    \"test\": \"goodbye\"\r\n  }\r\n}");
 
-        //VERIFY
-        _options.DisplayCacheFile(_output);
-        StaticCachePart.LocalCacheIsOutOfDate.ShouldEqual(true);
+            //VERIFY
+            _options.DisplayCacheFile(_output);
+            StaticCachePart.LocalCacheIsOutOfDate.ShouldEqual(true);
+        }
     }
 }
